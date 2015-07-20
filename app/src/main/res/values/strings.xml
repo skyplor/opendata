@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">TestOpenData</string>
+    <string name="hello_world">Hello world!</string>
+    <string name="lta_opendata_baseendpoint">http://datamall.mytransport.sg/ltaodataservice.svc</string>
+    <string name="lta_opendata_baseendpoint2">http://datamall2.mytransport.sg/ltaodataservice</string>
+    <string name="bus_arrival_endpoint">/BusArrival</string>
+    <string name="bus_route_sbst_route_endpoint">/SBSTRouteSet</string>
+    <string name="bus_route_sbst_service_endpoint">/SBSTInfoSet</string>
+    <string name="bus_route_smrt_route_endpoint">/SMRTRouteSet</string>
+    <string name="bus_route_smrt_service_endpoint">/SMRTInfoSet</string>
+    <string name="bus_stops_endpoint">/BusStopCodeSet</string>
+</resources>
