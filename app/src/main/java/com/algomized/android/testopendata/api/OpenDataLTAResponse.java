@@ -1,8 +1,10 @@
 package com.algomized.android.testopendata.api;
 
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import com.algomized.android.testopendata.model.LTAService;
+import com.algomized.android.testopendata.model.Meta;
 import com.google.gson.annotations.SerializedName;
 
 import java.util.List;
@@ -12,19 +14,19 @@ import java.util.List;
  */
 public class OpenDataLTAResponse {
     public static final String FIELD_RESPONSE = "Services";
-    public static final String FIELD_META = "meta";
+    public static final String FIELD_ERROR = "odata.error";
 
-    //    @SerializedName(FIELD_META)
-//    @NonNull
-//    private Meta meta;
+    @SerializedName(FIELD_ERROR)
+    @NonNull
+    private Meta meta;
     @SerializedName(FIELD_RESPONSE)
     @Nullable
     private List<LTAService> LTAServices;
 
-//    @NonNull
-//    public Meta getMeta() {
-//        return meta;
-//    }
+    @NonNull
+    public Meta getError() {
+        return meta;
+    }
 
     public List<LTAService> getLTAServices() {
         return LTAServices;

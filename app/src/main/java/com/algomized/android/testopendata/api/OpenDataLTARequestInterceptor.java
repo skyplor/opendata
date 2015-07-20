@@ -12,8 +12,8 @@ import retrofit.RequestInterceptor;
 public class OpenDataLTARequestInterceptor implements RequestInterceptor {
     @Override
     public void intercept(RequestFacade request) {
-        request.addQueryParam("AccountKey", TestOpenDataApplication_.getContext().getResources().getString(R.string.accountkey));
-        request.addQueryParam("UniqueUserId", TestOpenDataApplication_.getContext().getResources().getString(R.string.uniqueuserid));
-        request.addQueryParam("accept", "application/json");
+        request.addHeader("AccountKey", TestOpenDataApplication_.getContext().getResources().getString(R.string.accountkey));
+        request.addHeader("UniqueUserId", TestOpenDataApplication_.getContext().getResources().getString(R.string.uniqueuserid));
+        request.addHeader("accept", "application/json");
     }
 }
