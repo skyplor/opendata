@@ -9,4 +9,8 @@
     <string name="bus_route_smrt_route_endpoint">/SMRTRouteSet</string>
     <string name="bus_route_smrt_service_endpoint">/SMRTInfoSet</string>
     <string name="bus_stops_endpoint">/BusStopCodeSet</string>
+    <string name="title_activity_barcode_scanner">Barcode Scanner</string>
+    <string name="scan">Scan</string>
+    <string name="turn_on_flashlight">Turn On Flashlight</string>
+    <string name="turn_off_flashlight">Turn Off Flashlight</string>
 </resources>

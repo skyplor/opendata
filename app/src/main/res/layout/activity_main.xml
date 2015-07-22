@@ -10,4 +10,32 @@
         android:layout_height="wrap_content"
         android:text="Get Bus Arrivals" />
 
+    <Button
+        android:id="@+id/scrapScreen"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/getBusArrivals"
+        android:text="Scrap the website" />
+
+    <Button
+        android:id="@+id/scanBarcodeScreen"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/scrapScreen"
+        android:text="Scan Barcode" />
+
+    <Button
+        android:id="@+id/openRealmBrowser"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/scanBarcodeScreen"
+        android:text="Open Realm Browser" />
+
+
+    <android.support.design.widget.CoordinatorLayout
+        android:id="@+id/snackBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true" />
 </RelativeLayout>
