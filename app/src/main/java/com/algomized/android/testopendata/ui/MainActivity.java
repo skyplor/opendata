@@ -2,6 +2,7 @@ package com.algomized.android.testopendata.ui;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.support.annotation.UiThread;
 import android.support.design.widget.Snackbar;
@@ -13,8 +14,11 @@ import com.algomized.android.testopendata.api.OpenDataLTAResponse;
 import com.algomized.android.testopendata.api.OpenDataLTAService;
 import com.algomized.android.testopendata.model.HealthProduct;
 import com.algomized.android.testopendata.model.LTAService;
-import com.dd.realmbrowser.RealmBrowser;
+import com.firebase.client.ChildEventListener;
+import com.firebase.client.DataSnapshot;
 import com.firebase.client.Firebase;
+import com.firebase.client.FirebaseError;
+import com.firebase.client.Query;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
@@ -32,10 +36,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-import io.realm.Realm;
-import io.realm.RealmConfiguration;
 import retrofit.Callback;
 import retrofit.RetrofitError;
 import retrofit.client.Response;
@@ -47,7 +50,7 @@ public class MainActivity extends Activity {
     Set<String> healthcare_links;
 
     Set<String> productdetail_links;
-    Realm realm;
+    //    Realm realm;
     ProgressDialog progressDialog;
     Firebase mFirebaseRef;
 
@@ -68,7 +71,7 @@ public class MainActivity extends Activity {
     void init() {
         initialiseFirebase();
         getHealthcare_links();
-        setupRealmDB();
+//        setupRealmDB();
         healthcare_links.add("http://www.minshenghe.com.sg/health-care/allergies-sinus.html");
         healthcare_links.add("http://www.minshenghe.com.sg/health-care/antifungal-treatments.html");
         healthcare_links.add("http://www.minshenghe.com.sg/health-care/antiseptics-cleaning-supplies.html");
@@ -96,18 +99,18 @@ public class MainActivity extends Activity {
         Firebase.setAndroidContext(this);
         Firebase.getDefaultConfig().setPersistenceEnabled(true);
         mFirebaseRef = new Firebase("https://sgopendata.firebaseio.com/");
-        mFirebaseRef.keepSynced(true);
+//        mFirebaseRef.keepSynced(true);
     }
 
-    @UiThread
-    public void setupRealmDB() {
-        RealmConfiguration config1 = new RealmConfiguration.Builder(this)
-                .build();
-
-        realm = Realm.getInstance(config1);
-
-        RealmBrowser.getInstance().addRealmModel(HealthProduct.class);
-    }
+//    @UiThread
+//    public void setupRealmDB() {
+//        RealmConfiguration config1 = new RealmConfiguration.Builder(this)
+//                .build();
+//
+//        realm = Realm.getInstance(config1);
+//
+//        RealmBrowser.getInstance().addRealmModel(HealthProduct.class);
+//    }
 
     @Click
     void getBusArrivals() {
@@ -126,7 +129,7 @@ public class MainActivity extends Activity {
 
     @Click
     void openRealmBrowser() {
-        RealmBrowser.startRealmFilesActivity(this);
+//        RealmBrowser.startRealmFilesActivity(this);
     }
 
     @Override
@@ -139,7 +142,7 @@ public class MainActivity extends Activity {
             } else {
                 Log.d("MainActivity", "Scanned");
                 Snackbar.make(snackBar, "Scanned: " + result.getContents(), Snackbar.LENGTH_LONG).show();
-                showProgressDialog("Loading", "Searching the DB...", false);
+                showProgressDialog("Loading", "Searching the DB...", true);
                 // Search the DB for the number and present the result back to UI.
                 searchDB(result.getContents());
             }
@@ -150,20 +153,21 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void showProgressDialog(String title, String message, boolean cancelable) {
+    @UiThread
+    public void showProgressDialog(String title, String message, boolean cancelable) {
         progressDialog = new ProgressDialog(this);
         progressDialog.setTitle(title);
         progressDialog.setMessage(message);
         progressDialog.setCancelable(cancelable);
-        progressDialog.show();
-    }
+        progressDialog.setCanceledOnTouchOutside(false);
+        progressDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialog) {
+                Snackbar.make(snackBar, "Search is cancelled", Snackbar.LENGTH_LONG).show();
+            }
 
-    @UiThread
-    public void searchDB(String contents) {
-        // on successful callback, we dismiss the progressdialog and go display result on ui thread
-//        RealmResults results = realm.ge
-        progressDialog.dismiss();
-        Snackbar.make(snackBar, "Searching for " + contents, Snackbar.LENGTH_LONG);
+        });
+        progressDialog.show();
     }
 
     @Background
@@ -196,30 +200,30 @@ public class MainActivity extends Activity {
             Timber.i("ProductDetails size: " + getProductdetail_links().size());
             final List<HealthProduct> healthProducts = new ArrayList<>();
             HealthProduct healthProduct;
-//            for (String productDetailLink : getProductdetail_links()) {
-            doc = Jsoup.connect(getProductdetail_links().iterator().next()).timeout(5 * 60 * 1000).get();
-//                doc = Jsoup.connect(productDetailLink).timeout(5 * 60 * 1000).get();
-            healthProduct = new HealthProduct();
-            Elements titles = doc.select("div.content-details h1.content-title");
-            if (titles != null && !titles.isEmpty())
-                healthProduct.setName(titles.get(0).text());
-            Elements epc = doc.select("li.product-code span.product-detail-value");
-            if (epc != null && !epc.isEmpty())
-                healthProduct.setEpc(epc.get(0).text());
-            Elements ean = doc.select("li.product-ean span.product-detail-value");
-            if (ean != null && !ean.isEmpty())
-                healthProduct.setEan(ean.get(0).text());
-            Elements manufacturer = doc.select("li.product-manufacturer span.product-detail-value");
-            if (manufacturer != null && !manufacturer.isEmpty())
-                healthProduct.setManufacturer(manufacturer.get(0).text());
-            Elements description = doc.select("div.tab-pane.active");
-            if (description != null && !description.isEmpty())
-                healthProduct.setDescription(description.get(0).text());
-            Elements image_src = doc.select("a.MagicZoomPlus img");
-            if (image_src != null && !image_src.isEmpty())
-                healthProduct.setImageSrc(image_src.get(0).text());
-            healthProducts.add(healthProduct);
-//            }
+            for (String productDetailLink : getProductdetail_links()) {
+//            doc = Jsoup.connect(getProductdetail_links().iterator().next()).timeout(5 * 60 * 1000).get();
+                doc = Jsoup.connect(productDetailLink).timeout(5 * 60 * 1000).get();
+                healthProduct = new HealthProduct();
+                Elements titles = doc.select("div.content-details h1.content-title");
+                if (titles != null && !titles.isEmpty())
+                    healthProduct.setName(titles.get(0).text());
+                Elements epc = doc.select("li.product-code span.product-detail-value");
+                if (epc != null && !epc.isEmpty())
+                    healthProduct.setEpc(epc.get(0).text());
+                Elements ean = doc.select("li.product-ean span.product-detail-value");
+                if (ean != null && !ean.isEmpty())
+                    healthProduct.setEan(ean.get(0).text());
+                Elements manufacturer = doc.select("li.product-manufacturer span.product-detail-value");
+                if (manufacturer != null && !manufacturer.isEmpty())
+                    healthProduct.setManufacturer(manufacturer.get(0).text());
+                Elements description = doc.select("div.tab-pane.active");
+                if (description != null && !description.isEmpty())
+                    healthProduct.setDescription(description.get(0).text());
+                Elements image_src = doc.select("a.MagicZoomPlus img");
+                if (image_src != null && !image_src.isEmpty())
+                    healthProduct.setImageSrc(image_src.get(0).text());
+                healthProducts.add(healthProduct);
+            }
             Timber.i("Health Products size: " + healthProducts.size());
             insertIntoDB(healthProducts);
         } catch (IOException e) {
@@ -227,24 +231,82 @@ public class MainActivity extends Activity {
         }
     }
 
-    @UiThread
+    @Background
     public void insertIntoDB(List<HealthProduct> healthProducts) {
+        Firebase healthproductsref = mFirebaseRef.child("healthproducts");
+
         final List<HealthProduct> temp = new ArrayList<>();
         for (HealthProduct healthProduct : healthProducts) {
-            HealthProduct healthProductTemp = new HealthProduct(healthProduct);
-            temp.add(healthProductTemp);
+//            HealthProduct healthProductTemp = new HealthProduct(healthProduct);
+//            temp.add(healthProductTemp);
+            healthproductsref.push().setValue(healthProduct);
         }
-        realm.executeTransaction(new Realm.Transaction() {
-            @Override
-            public void execute(Realm realm) {
-                realm.copyToRealmOrUpdate(temp);
-            }
-        });
+//        realm.executeTransaction(new Realm.Transaction() {
+//            @Override
+//            public void execute(Realm realm) {
+//                realm.copyToRealmOrUpdate(temp);
+//            }
+//        });
         Timber.i("Done Scrapping");
 
         Snackbar.make(snackBar, "Done scrapping", Snackbar.LENGTH_LONG).show();
-        realm.close();
+//        realm.close();
     }
+
+    @Background
+    protected void searchDB(final String barcode) {
+        // search the db and if no result, dem we proceed to add into db
+        // if user cant find the result,we proceed to add into the db
+        // we will first search our phone db
+//        Snackbar.make(snackBar, "Searching for " + barcode, Snackbar.LENGTH_LONG).show();
+        Firebase healthproductsref = mFirebaseRef.child("healthproducts");
+        Query queryRef = healthproductsref.orderByChild("ean").equalTo(barcode);
+        queryRef.addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String previousChild) {
+                display(dataSnapshot, previousChild);
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(FirebaseError firebaseError) {
+                Snackbar.make(snackBar, "Something went wrong. It's probably our fault but please try again later. =)", Snackbar.LENGTH_LONG).show();
+            }
+        });
+        // on successful callback, we dismiss the progressdialog and go display result on ui thread
+//        RealmResults results = realm.ge
+    }
+
+    @UiThread
+    public void display(DataSnapshot dataSnapshot, String previousChild) {
+        progressDialog.dismiss();
+        System.out.println(dataSnapshot.getValue());
+        Map<String, Object> healthProduct = (Map<String, Object>) dataSnapshot.getValue();
+
+//                String name = healthProduct.getName();
+//                String ean = healthProduct.getEan();
+//                String manufacturer = healthProduct.getManufacturer();
+//                String imageSrc = healthProduct.getImageSrc();
+//                String description = healthProduct.getDescription();
+
+        Snackbar.make(snackBar, healthProduct.get("name") + ": " + healthProduct.get("ean"), Snackbar.LENGTH_LONG).show();
+        System.out.println(healthProduct.get("name") + ": " + healthProduct.get("ean"));
+    }
+
 
     @Background
     public void getOpenDataLTAService(int skip, String busStopID, String serviceNo) {

@@ -1,1 +1,1 @@
-include ':app', ':webscrapper', ':realm-browser'
+include ':app'
