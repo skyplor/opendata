@@ -3,6 +3,7 @@ package com.algomized.android.testopendata.ui;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.support.annotation.UiThread;
 import android.support.design.widget.Snackbar;
 import android.util.Log;
 import android.view.View;
@@ -13,6 +14,7 @@ import com.algomized.android.testopendata.api.OpenDataLTAService;
 import com.algomized.android.testopendata.model.HealthProduct;
 import com.algomized.android.testopendata.model.LTAService;
 import com.dd.realmbrowser.RealmBrowser;
+import com.firebase.client.Firebase;
 import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
@@ -47,6 +49,7 @@ public class MainActivity extends Activity {
     Set<String> productdetail_links;
     Realm realm;
     ProgressDialog progressDialog;
+    Firebase mFirebaseRef;
 
     @ViewById
     View snackBar;
@@ -63,6 +66,7 @@ public class MainActivity extends Activity {
 
     @AfterViews
     void init() {
+        initialiseFirebase();
         getHealthcare_links();
         setupRealmDB();
         healthcare_links.add("http://www.minshenghe.com.sg/health-care/allergies-sinus.html");
@@ -88,7 +92,14 @@ public class MainActivity extends Activity {
         healthcare_links.add("http://www.minshenghe.com.sg/health-care/vitamins-supplements.html");
     }
 
-    @Background
+    private void initialiseFirebase() {
+        Firebase.setAndroidContext(this);
+        Firebase.getDefaultConfig().setPersistenceEnabled(true);
+        mFirebaseRef = new Firebase("https://sgopendata.firebaseio.com/");
+        mFirebaseRef.keepSynced(true);
+    }
+
+    @UiThread
     public void setupRealmDB() {
         RealmConfiguration config1 = new RealmConfiguration.Builder(this)
                 .build();
@@ -147,7 +158,7 @@ public class MainActivity extends Activity {
         progressDialog.show();
     }
 
-    @Background
+    @UiThread
     public void searchDB(String contents) {
         // on successful callback, we dismiss the progressdialog and go display result on ui thread
 //        RealmResults results = realm.ge
@@ -185,29 +196,30 @@ public class MainActivity extends Activity {
             Timber.i("ProductDetails size: " + getProductdetail_links().size());
             final List<HealthProduct> healthProducts = new ArrayList<>();
             HealthProduct healthProduct;
-            for (String productDetailLink : getProductdetail_links()) {
-                doc = Jsoup.connect(productDetailLink).timeout(5 * 60 * 1000).get();//getProductdetail_links().iterator().next()).timeout(5 * 60 * 1000).get();
-                healthProduct = new HealthProduct();
-                Elements titles = doc.select("div.content-details h1.content-title");
-                if (titles != null && !titles.isEmpty())
-                    healthProduct.setName(titles.get(0).text());
-                Elements epc = doc.select("li.product-code span.product-detail-value");
-                if (epc != null && !epc.isEmpty())
-                    healthProduct.setEpc(epc.get(0).text());
-                Elements ean = doc.select("li.product-ean span.product-detail-value");
-                if (ean != null && !ean.isEmpty())
-                    healthProduct.setEan(ean.get(0).text());
-                Elements manufacturer = doc.select("li.product-manufacturer span.product-detail-value");
-                if (manufacturer != null && !manufacturer.isEmpty())
-                    healthProduct.setManufacturer(manufacturer.get(0).text());
-                Elements description = doc.select("div.tab-pane.active");
-                if (description != null && !description.isEmpty())
-                    healthProduct.setDescription(description.get(0).text());
-                Elements image_src = doc.select("a.MagicZoomPlus img");
-                if (image_src != null && !image_src.isEmpty())
-                    healthProduct.setImageSrc(image_src.get(0).text());
-                healthProducts.add(healthProduct);
-            }
+//            for (String productDetailLink : getProductdetail_links()) {
+            doc = Jsoup.connect(getProductdetail_links().iterator().next()).timeout(5 * 60 * 1000).get();
+//                doc = Jsoup.connect(productDetailLink).timeout(5 * 60 * 1000).get();
+            healthProduct = new HealthProduct();
+            Elements titles = doc.select("div.content-details h1.content-title");
+            if (titles != null && !titles.isEmpty())
+                healthProduct.setName(titles.get(0).text());
+            Elements epc = doc.select("li.product-code span.product-detail-value");
+            if (epc != null && !epc.isEmpty())
+                healthProduct.setEpc(epc.get(0).text());
+            Elements ean = doc.select("li.product-ean span.product-detail-value");
+            if (ean != null && !ean.isEmpty())
+                healthProduct.setEan(ean.get(0).text());
+            Elements manufacturer = doc.select("li.product-manufacturer span.product-detail-value");
+            if (manufacturer != null && !manufacturer.isEmpty())
+                healthProduct.setManufacturer(manufacturer.get(0).text());
+            Elements description = doc.select("div.tab-pane.active");
+            if (description != null && !description.isEmpty())
+                healthProduct.setDescription(description.get(0).text());
+            Elements image_src = doc.select("a.MagicZoomPlus img");
+            if (image_src != null && !image_src.isEmpty())
+                healthProduct.setImageSrc(image_src.get(0).text());
+            healthProducts.add(healthProduct);
+//            }
             Timber.i("Health Products size: " + healthProducts.size());
             insertIntoDB(healthProducts);
         } catch (IOException e) {
@@ -215,9 +227,13 @@ public class MainActivity extends Activity {
         }
     }
 
-    @Background
+    @UiThread
     public void insertIntoDB(List<HealthProduct> healthProducts) {
-        final List<HealthProduct> temp = new ArrayList<>(healthProducts);
+        final List<HealthProduct> temp = new ArrayList<>();
+        for (HealthProduct healthProduct : healthProducts) {
+            HealthProduct healthProductTemp = new HealthProduct(healthProduct);
+            temp.add(healthProductTemp);
+        }
         realm.executeTransaction(new Realm.Transaction() {
             @Override
             public void execute(Realm realm) {

@@ -1,14 +1,10 @@
-package com.algomized.android.testopendata.model;
-
-import io.realm.RealmObject;
-import io.realm.annotations.PrimaryKey;
+package com.algomized.model;
 
 /**
  * Created by Sky on 22/7/2015.
  */
-public class HealthProduct extends RealmObject {
+public class HealthProduct {
     //    private String id;
-    @PrimaryKey
     private String name;
     private String epc;
     private String ean;
@@ -92,4 +88,7 @@ public class HealthProduct extends RealmObject {
         this.name = name;
     }
 
+    public String toString() {
+        return "Name: " + name + "\nEPC: " + epc + "\nEAN: " + ean + "\nManufacturer: " + manufacturer + "\nImageSource: " + imageSrc + "\nDescription: " + description;
+    }
 }

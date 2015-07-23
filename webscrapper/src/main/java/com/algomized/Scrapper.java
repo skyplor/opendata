@@ -1,12 +1,28 @@
 package com.algomized;
 
+import com.algomized.model.HealthProduct;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.supercsv.cellprocessor.Optional;
+import org.supercsv.cellprocessor.constraint.NotNull;
+import org.supercsv.cellprocessor.constraint.UniqueHashCode;
+import org.supercsv.cellprocessor.ift.CellProcessor;
+import org.supercsv.io.CsvBeanWriter;
+import org.supercsv.io.ICsvBeanWriter;
+import org.supercsv.prefs.CsvPreference;
 
+import java.io.BufferedWriter;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class Scrapper {
@@ -57,7 +73,7 @@ public class Scrapper {
     }
 
     public static void goGrabLinks() {
-        Document doc = null;
+        Document doc;
         try {
 //            doc = Jsoup.connect("http://www.minshenghe.com.sg/health-care.html").get();
 //            Elements contents = doc.getElementsByClass("nav-pills");
@@ -70,38 +86,110 @@ public class Scrapper {
 //                    getHealthcare_links().add(linkHref);
 //                }
 //            }
-            System.out.println("Size: " + getHealthcare_links().size());
+            System.out.println("Health Care links size: " + getHealthcare_links().size());
             for (String healthcareLink : getHealthcare_links()) {
-                doc = Jsoup.connect(healthcareLink).timeout(5 * 60 * 1000).get();
+                doc = Jsoup.connect(healthcareLink + "?page=all").userAgent("Mozilla/5.0 (Windows NT 6.1; WOW64; rv:8.0.1) Gecko/20100101 Firefox/8.0.1").timeout(5 * 60 * 1000).get();
                 Elements productdetails = doc.select("div.product-title a");
                 if (productdetails != null)
-                    System.out.println("Product details not null, size: " + productdetails.size());
-                for (Element productdetail : productdetails) {
-                    System.out.println(productdetail.toString());
-                    Elements links = productdetail.getElementsByTag("a");
-                    for (Element link : links) {
-                        String productLink = link.attr("href");
-                        String product = link.text();
-                        System.out.println(productLink);
-                        getProductdetail_links().add(productLink);
+                    for (Element productdetail : productdetails) {
+                        Elements links = productdetail.getElementsByTag("a");
+                        for (Element link : links) {
+                            String productLink = link.attr("href");
+                            getProductdetail_links().add(productLink);
+                        }
                     }
-                }
-//                Elements productdetails = doc.getElementsByClass("product-image");
-//                for (Element productdetail : productdetails) {
-//                    Elements links = productdetail.getElementsByTag("a");
-//                    for (Element link : links) {
-//                        String productLink = link.attr("href");
-//                        String product = link.text();
-//                        Timber.i("ProductDetail: %s (Link: %s)", product, productLink);
-//                        getProductdetail_links().add(productLink);
-//                    }
-//                }
             }
-            for (String s : getProductdetail_links()) {
-                System.out.println(s);
+            System.out.println("ProductDetails size: " + getProductdetail_links().size());
+            final List<HealthProduct> healthProducts = new ArrayList<>();
+            HealthProduct healthProduct;
+            for (String productDetailLink : getProductdetail_links()) {
+                System.out.println("Current link: " + productDetailLink);
+//            doc = Jsoup.connect(getProductdetail_links().iterator().next()).timeout(5 * 60 * 1000).userAgent("Mozilla/5.0 (Windows NT 6.1; WOW64; rv:8.0.1) Gecko/20100101 Firefox/8.0.1").get();
+                doc = Jsoup.connect(productDetailLink).userAgent("Mozilla/5.0 (Windows NT 6.1; WOW64; rv:8.0.1) Gecko/20100101 Firefox/8.0.1").timeout(1 * 60 * 1000).get();
+//            System.out.println("Document:\n" + doc.toString());
+                healthProduct = new HealthProduct();
+                Elements titles = doc.select("div.content-details h1.content-title");
+                if (titles != null && !titles.isEmpty())
+                    healthProduct.setName(titles.get(0).text());
+                Elements epc = doc.select("li.product-code span.product-detail-value");
+                if (epc != null && !epc.isEmpty())
+                    healthProduct.setEpc(epc.get(0).text());
+                Elements ean = doc.select("li.product-ean span.product-detail-value");
+                if (ean != null && !ean.isEmpty())
+                    healthProduct.setEan(ean.get(0).text());
+                Elements manufacturer = doc.select("li.product-manufacturer span.product-detail-value");
+                if (manufacturer != null && !manufacturer.isEmpty())
+                    healthProduct.setManufacturer(manufacturer.get(0).text());
+                Elements description = doc.select("div.tab-pane.active");
+                if (description != null && !description.isEmpty())
+                    healthProduct.setDescription(description.get(0).text());
+                Elements image_src = doc.select("a.MagicZoomPlus img");
+                if (image_src != null && !image_src.isEmpty())
+                    healthProduct.setImageSrc(image_src.get(0).text());
+                healthProducts.add(healthProduct);
             }
+            System.out.println("Health Products size: " + healthProducts.size());
+            writeToCSV(healthProducts);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void writeToCSV(List<HealthProduct> healthProducts) {
+        try (Writer writer = new BufferedWriter(new OutputStreamWriter(
+                new FileOutputStream("writeWithCsvBeanWriter.csv"), "UTF-8"))) {
+            writer.write("name,epc,ean,manufacturer,imageSrc,description");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        ICsvBeanWriter beanWriter = null;
+        try {
+            beanWriter = new CsvBeanWriter(new FileWriter("writeWithCsvBeanWriter.csv"),
+                    CsvPreference.STANDARD_PREFERENCE);
+
+            // the header elements are used to map the bean values to each column (names must match)
+            final String[] header = new String[]{"name", "epc", "ean", "manufacturer", "imageSrc", "description"};
+            final CellProcessor[] processors = getProcessors();
+
+            // write the header
+            beanWriter.writeHeader(header);
+
+            // write the beans
+            for (final HealthProduct customer : healthProducts) {
+                beanWriter.write(customer, header, processors);
+            }
+
+        } catch (IOException e) {
+            System.out.println("Exception in writecsv:\n" + e);
+        } finally {
+            if (beanWriter != null) {
+                try {
+                    beanWriter.close();
+                } catch (IOException e) {
+                    System.out.println("Unable to close beanwriter:\n" + e);
+                }
+            }
+        }
+    }
+
+    /**
+     * Sets up the processors used for the examples. There are 10 CSV columns, so 10 processors are defined. All values
+     * are converted to Strings before writing (there's no need to convert them), and null values will be written as
+     * empty columns (no need to convert them to "").
+     *
+     * @return the cell processors
+     */
+    private static CellProcessor[] getProcessors() {
+
+        final CellProcessor[] processors = new CellProcessor[]{
+                new UniqueHashCode(), // name (must be unique)
+                new NotNull(), // epc
+                new NotNull(), // ean
+                new Optional(), // manufacturer
+                new Optional(), // imageSrc
+                new Optional(), // description
+        };
+
+        return processors;
     }
 }
