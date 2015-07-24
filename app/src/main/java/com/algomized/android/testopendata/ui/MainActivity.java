@@ -12,6 +12,7 @@ import android.view.View;
 import com.algomized.android.testopendata.R;
 import com.algomized.android.testopendata.api.OpenDataLTAResponse;
 import com.algomized.android.testopendata.api.OpenDataLTAService;
+import com.algomized.android.testopendata.model.HSAProduct;
 import com.algomized.android.testopendata.model.HealthProduct;
 import com.algomized.android.testopendata.model.LTAService;
 import com.firebase.client.ChildEventListener;
@@ -173,6 +174,7 @@ public class MainActivity extends Activity {
     @Background
     public void goGrabLinks() {
         Document doc;
+        String currentLink = "";
         try {
 //            doc = Jsoup.connect("http://www.minshenghe.com.sg/health-care.html").get();
 //            Elements contents = doc.getElementsByClass("nav-pills");
@@ -186,6 +188,7 @@ public class MainActivity extends Activity {
 //                }
 //            }
             for (String healthcareLink : getHealthcare_links()) {
+                currentLink = healthcareLink;
                 doc = Jsoup.connect(healthcareLink + "?page=all").timeout(5 * 60 * 1000).get();
                 Elements productdetails = doc.select("div.product-title a");
                 if (productdetails != null)
@@ -197,16 +200,20 @@ public class MainActivity extends Activity {
                         }
                     }
             }
+            currentLink = "";
             Timber.i("ProductDetails size: " + getProductdetail_links().size());
             final List<HealthProduct> healthProducts = new ArrayList<>();
             HealthProduct healthProduct;
             for (String productDetailLink : getProductdetail_links()) {
+                currentLink = productDetailLink;
 //            doc = Jsoup.connect(getProductdetail_links().iterator().next()).timeout(5 * 60 * 1000).get();
                 doc = Jsoup.connect(productDetailLink).timeout(5 * 60 * 1000).get();
                 healthProduct = new HealthProduct();
                 Elements titles = doc.select("div.content-details h1.content-title");
-                if (titles != null && !titles.isEmpty())
-                    healthProduct.setName(titles.get(0).text());
+                if (titles != null && !titles.isEmpty()) {
+                    String name = titles.get(0).text().split(" - ")[0];
+                    healthProduct.setProductName(name);
+                }
                 Elements epc = doc.select("li.product-code span.product-detail-value");
                 if (epc != null && !epc.isEmpty())
                     healthProduct.setEpc(epc.get(0).text());
@@ -227,6 +234,7 @@ public class MainActivity extends Activity {
             Timber.i("Health Products size: " + healthProducts.size());
             insertIntoDB(healthProducts);
         } catch (IOException e) {
+            System.out.println("Error at link: " + currentLink);
             e.printStackTrace();
         }
     }
@@ -264,7 +272,17 @@ public class MainActivity extends Activity {
         queryRef.addChildEventListener(new ChildEventListener() {
             @Override
             public void onChildAdded(DataSnapshot dataSnapshot, String previousChild) {
-                display(dataSnapshot, previousChild);
+                System.out.println(dataSnapshot.getValue());
+                Map<String, Object> healthProductMap = (Map<String, Object>) dataSnapshot.getValue();
+                HealthProduct healthProduct = new HealthProduct();
+                healthProduct.setProductName(String.valueOf(healthProductMap.get("productname")));
+                healthProduct.setEpc(String.valueOf(healthProductMap.get("epc")));
+                healthProduct.setEan(String.valueOf(healthProductMap.get("ean")));
+                healthProduct.setManufacturer(String.valueOf(healthProductMap.get("manufacturer")));
+                healthProduct.setImageSrc(String.valueOf(healthProductMap.get("imageSrc")));
+                healthProduct.setDescription(String.valueOf(healthProductMap.get("description")));
+                display(healthProduct);
+                searchHSAdb(healthProduct);
             }
 
             @Override
@@ -292,21 +310,75 @@ public class MainActivity extends Activity {
     }
 
     @UiThread
-    public void display(DataSnapshot dataSnapshot, String previousChild) {
+    public void display(HealthProduct healthProduct) {
         progressDialog.dismiss();
-        System.out.println(dataSnapshot.getValue());
-        Map<String, Object> healthProduct = (Map<String, Object>) dataSnapshot.getValue();
 
-//                String name = healthProduct.getName();
-//                String ean = healthProduct.getEan();
-//                String manufacturer = healthProduct.getManufacturer();
-//                String imageSrc = healthProduct.getImageSrc();
-//                String description = healthProduct.getDescription();
-
-        Snackbar.make(snackBar, healthProduct.get("name") + ": " + healthProduct.get("ean"), Snackbar.LENGTH_LONG).show();
-        System.out.println(healthProduct.get("name") + ": " + healthProduct.get("ean"));
+        Snackbar.make(snackBar, healthProduct.toString(), Snackbar.LENGTH_LONG).show();
+        System.out.println(healthProduct.toString());
     }
 
+    @UiThread
+    public void display(HSAProduct hsaProduct) {
+        progressDialog.dismiss();
+
+        Snackbar.make(snackBar, hsaProduct.toString(), Snackbar.LENGTH_LONG).show();
+        System.out.println(hsaProduct.toString());
+    }
+
+    @Background
+    public void searchHSAdb(HealthProduct healthProduct) {
+
+        String name = healthProduct.getProductName().toLowerCase();
+        String ean = healthProduct.getEan();
+        String manufacturer = healthProduct.getManufacturer();
+        String imageSrc = healthProduct.getImageSrc();
+        String description = healthProduct.getDescription();
+
+        Firebase hsacertifiedref = mFirebaseRef.child("hsacertified");
+        Query queryRef = hsacertifiedref.orderByChild("case_folded_productname").startAt(name).endAt(name + "~");
+        queryRef.addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+                System.out.println(dataSnapshot.getValue());
+                Map<String, Object> hsaProductMap = (Map<String, Object>) dataSnapshot.getValue();
+                HSAProduct hsaProduct = new HSAProduct();
+                hsaProduct.setProductname(String.valueOf(hsaProductMap.get("productname")));
+                hsaProduct.setManufacturer(String.valueOf(hsaProductMap.get("manufacturer")));
+                hsaProduct.setActiveingredients(String.valueOf(hsaProductMap.get("activeingredients")));
+                hsaProduct.setApprovaldate(String.valueOf(hsaProductMap.get("approvaldate")));
+                hsaProduct.setAtccode(String.valueOf(hsaProductMap.get("atccode")));
+                hsaProduct.setCountryofmanufacturer(String.valueOf(hsaProductMap.get("countryofmanufacturer")));
+                hsaProduct.setDosageform(String.valueOf(hsaProductMap.get("dosageform")));
+                hsaProduct.setForensicclassification(String.valueOf(hsaProductMap.get("forensicclassification")));
+                hsaProduct.setLicenceno(String.valueOf(hsaProductMap.get("licenceno")));
+                hsaProduct.setLicenseholder(String.valueOf(hsaProductMap.get("licenseholder")));
+                hsaProduct.setRouteofadministration(String.valueOf(hsaProductMap.get("routeofadministration")));
+                hsaProduct.setStrength(String.valueOf(hsaProductMap.get("strength")));
+                display(hsaProduct);
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+            }
+
+            @Override
+            public void onCancelled(FirebaseError firebaseError) {
+
+            }
+        });
+
+    }
 
     @Background
     public void getOpenDataLTAService(int skip, String busStopID, String serviceNo) {

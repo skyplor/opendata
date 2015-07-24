@@ -6,34 +6,24 @@ package com.algomized.android.testopendata.model;
 public class HealthProduct {//extends RealmObject {
     //    private String id;
 //    @PrimaryKey
-    private String name;
+    private String productname;
+    private String case_folded_productname;
     private String epc;
     private String ean;
     private String manufacturer;
     private String imageSrc;
     private String description;
 
-//    public HealthProduct() {
-//        id = UUID.randomUUID().toString();
-//    }
-//
-//    public String getId() {
-//        return id;
-//    }
-//
-//    public void setId(String id) {
-//        this.id = id;
-//    }
-
     public HealthProduct() {
     }
 
     public HealthProduct(HealthProduct healthProduct) {
-        this(healthProduct.getName(), healthProduct.getEpc(), healthProduct.getEan(), healthProduct.getManufacturer(), healthProduct.getImageSrc(), healthProduct.getDescription());
+        this(healthProduct.getProductName(), healthProduct.getEpc(), healthProduct.getEan(), healthProduct.getManufacturer(), healthProduct.getImageSrc(), healthProduct.getDescription());
     }
 
-    public HealthProduct(String name, String epc, String ean, String manufacturer, String imageSrc, String description) {
-        this.name = name;
+    public HealthProduct(String productname, String epc, String ean, String manufacturer, String imageSrc, String description) {
+        this.productname = productname;
+        this.case_folded_productname = productname.toLowerCase();
         this.epc = epc;
         this.ean = ean;
         this.manufacturer = manufacturer;
@@ -81,12 +71,17 @@ public class HealthProduct {//extends RealmObject {
         this.epc = epc;
     }
 
-    public String getName() {
-        return name;
+    public String getProductName() {
+        return productname;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setProductName(String productname) {
+        this.productname = productname;
+        this.case_folded_productname = productname.toLowerCase();
+    }
+
+    public String toString() {
+        return "Product Name: " + productname + "\nEPC: " + epc + "\nEAN: " + ean + "\nManufacturer: " + manufacturer + "\nImage: " + imageSrc + "\nDescription: " + description;
     }
 
 }
